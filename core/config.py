@@ -16,7 +16,9 @@ class Settings(BaseSettings):
     @property
     def DATABASE_URL(self) -> str:
         if self.ENVIRONMENT == "local":
-            return self.DATABASE_SQLITE_URL.replace("sqlite://", "sqlite+aiosqlite://")
+            return self.DATABASE_SQLITE_URL.replace(
+                "sqlite://", "sqlite+aiosqlite://"
+            )
         return self.DATABASE_POSTGRES_URL
 
     @property
@@ -29,5 +31,6 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         extra = "allow"
+
 
 settings = Settings()

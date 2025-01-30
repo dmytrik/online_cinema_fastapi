@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+online_cinema.db
 ### macOS ###
 # General
 .DS_Store
