@@ -21,6 +21,7 @@ from sqlalchemy.orm import (
     validates
 )
 
+
 from core.database import Base
 from core.utils import generate_secure_token
 
@@ -52,6 +53,7 @@ class UserGroupModel(Base):
     def __repr__(self):
         return f"<UserGroupModel(id={self.id}, name={self.name})>"
 
+from app.cart.base import CartModel
 
 class UserModel(Base):
     __tablename__ = "users"
@@ -93,6 +95,8 @@ class UserModel(Base):
         back_populates="user",
         cascade="all, delete-orphan"
     )
+
+    cart: Mapped["CartModel"] = relationship("CartModel", back_populates="user")
 
     def __repr__(self):
         return f"<UserModel(id={self.id}, email={self.email}, is_active={self.is_active})>"

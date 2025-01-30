@@ -1,15 +1,15 @@
-from core import engine, Base
+from alembic import context
+from sqlalchemy import create_engine
+from core.database import Base
+from core.config import settings
 
-connectable = engine
+connectable = create_engine(settings.DATABASE_URL_SYNC)
 
 def run_migrations_online():
-    from alembic import context
     config = context.config
     target_metadata = Base.metadata
 
-    async def run():
-        async with connectable.connect() as connection:
-            async with connection.begin():
-                context.run_migrations()
-
-    run()
+    with connectable.connect() as connection:
+        with connection.begin():
+            context.configure(connection=connection, target_metadata=target_metadata)
+            context.run_migrations()

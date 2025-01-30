@@ -1,22 +1,16 @@
-import uuid
-
-# import GUID
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from core.config import settings
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
-engine = create_async_engine(settings.DATABASE_URL, echo=True)
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+async_engine = create_async_engine(settings.DATABASE_URL, echo=True)
+AsyncSessionLocal = sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
+
+sync_engine = create_engine(settings.DATABASE_URL_SYNC, echo=True)
 
 async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
-
-
-# class Base(DeclarativeBase):
-#     type_annotation_map = {
-#         uuid.UUID: GUID,
-#     }

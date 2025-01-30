@@ -24,6 +24,8 @@ pydantic-settings = "^2.7.1"
 asyncpg = "^0.30.0"
 ruff = "^0.9.3"
 guid = "^0.2.1"
+python-dotenv = "^1.0.1"
+aiosqlite = "^0.20.0"
 
 
 [tool.poetry.group.dev.dependencies]
