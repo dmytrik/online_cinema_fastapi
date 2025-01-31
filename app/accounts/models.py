@@ -20,9 +20,10 @@ from sqlalchemy.orm import (
     relationship,
 )
 
-
+# from app import OrderModel, PaymentModel
 from core.database import Base
-from core.utils import generate_secure_token
+from core.utils import generate_secure_token, verify_password, hash_password
+from app.accounts.validators import validate_password_strength
 
 
 class UserGroupEnum(str, enum.Enum):
@@ -127,8 +128,26 @@ class UserModel(Base):
     def __repr__(self):
         return f"<UserModel(id={self.id}, email={self.email}, is_active={self.is_active})>"
 
+    @property
+    def password(self) -> None:
+        raise AttributeError("Password is write-only. Use the setter to set the password.")
+
+    @password.setter
+    def password(self, raw_password: str) -> None:
+        """
+        Set the user's password after validating its strength and hashing it.
+        """
+        validate_password_strength(raw_password)
+        self._hashed_password = hash_password(raw_password)
+
     def has_group(self, group_name: UserGroupEnum) -> bool:
         return self.group.name == group_name
+
+    def verify_password(self, raw_password: str) -> bool:
+        """
+        Verify the provided password against the stored hashed password.
+        """
+        return verify_password(raw_password, self._hashed_password)
 
 
 class UserProfileModel(Base):
@@ -147,7 +166,7 @@ class UserProfileModel(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
     )
-    user: Mapped[UserModel] = relationship(
+    user: Mapped["UserModel"] = relationship(
         "UserModel", back_populates="profile"
     )
 
@@ -183,7 +202,7 @@ class TokenBaseModel(Base):
 class ActivationTokenModel(TokenBaseModel):
     __tablename__ = "activation_tokens"
 
-    user: Mapped[UserModel] = relationship(
+    user: Mapped["UserModel"] = relationship(
         "UserModel", back_populates="activation_token"
     )
 
@@ -196,7 +215,7 @@ class ActivationTokenModel(TokenBaseModel):
 class PasswordResetTokenModel(TokenBaseModel):
     __tablename__ = "password_reset_tokens"
 
-    user: Mapped[UserModel] = relationship(
+    user: Mapped["UserModel"] = relationship(
         "UserModel", back_populates="password_reset_token"
     )
 
@@ -209,12 +228,24 @@ class PasswordResetTokenModel(TokenBaseModel):
 class RefreshTokenModel(TokenBaseModel):
     __tablename__ = "refresh_tokens"
 
-    user: Mapped[UserModel] = relationship(
+    user: Mapped["UserModel"] = relationship(
         "UserModel", back_populates="refresh_tokens"
     )
     token: Mapped[str] = mapped_column(
         String(512), unique=True, nullable=False, default=generate_secure_token
     )
+
+    @classmethod
+    def create(cls, user_id: int, days_valid: int, token: str) -> "RefreshTokenModel":
+        """
+        Factory method to create a new RefreshTokenModel instance.
+
+        This method simplifies the creation of a new refresh token by calculating
+        the expiration date based on the provided number of valid days and setting
+        the required attributes.
+        """
+        expires_at = datetime.now(timezone.utc) + timedelta(days=days_valid)
+        return cls(user_id=user_id, expires_at=expires_at, token=token)
 
     def __repr__(self):
         return f"<RefreshTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
