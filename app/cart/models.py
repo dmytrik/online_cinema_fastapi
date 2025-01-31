@@ -18,7 +18,7 @@ class CartModel(Base):
     )
 
     cart_items: Mapped[list["CartItemModel"]] = relationship(
-        "CartItemModel", back_populates="cart"
+        "CartItemModel", back_populates="cart", cascade="all, delete-orphan"
     )
 
     def __repr__(self):

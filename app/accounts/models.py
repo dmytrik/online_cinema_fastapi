@@ -252,3 +252,7 @@ class RefreshTokenModel(TokenBaseModel):
 
     def __repr__(self):
         return f"<RefreshTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
+
+from app.orders.models import OrderModel
+from app.payments.models import PaymentModel
+from app.cart.models import CartModel
