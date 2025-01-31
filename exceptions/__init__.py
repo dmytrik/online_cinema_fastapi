@@ -1,6 +1,6 @@
 from exceptions.security import (
     BaseSecurityError,
     InvalidTokenError,
-    TokenExpiredError
+    TokenExpiredError,
 )
 from exceptions.email import BaseEmailError

@@ -21,7 +21,6 @@ class Settings(BaseSettings):
             return self.DATABASE_SQLITE_URL
         return self.DATABASE_POSTGRES_URL
 
-
     class Config:
         env_file = ".env"
         extra = "allow"

@@ -5,7 +5,6 @@ from sqlalchemy import ForeignKey, func, DateTime, UniqueConstraint
 from core.database import Base
 from datetime import datetime
 
-# from app import UserModel
 
 class CartModel(Base):
     __tablename__ = "carts"

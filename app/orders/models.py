@@ -5,7 +5,6 @@ from typing import Optional
 from sqlalchemy import ForeignKey, DateTime, func, Enum, DECIMAL
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-# from app import MovieModel, UserModel, PaymentModel, PaymentItemModel
 from core.database import Base
 
 
@@ -45,6 +44,7 @@ class OrderModel(Base):
             f"<OrderModel(id={self.id}, user_id={self.user_id}, created_at={self.created_at}, "
             f"status={self.status}, total_amount={self.total_amount})>"
         )
+
 
 class OrderItemModel(Base):
     __tablename__ = "order_items"

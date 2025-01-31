@@ -12,7 +12,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy.dialects.postgresql import UUID
 
-# from app import OrderItemModel
 from core.database import Base
 from core.config import settings
 

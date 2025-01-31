@@ -4,11 +4,6 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
-from app.accounts import models as accounts_models
-from app.cart import models as cart_models
-from app.movies import models as movie_models
-from app.orders import models as order_models
-from app.payments import models as payment_models
 from core.database import Base
 
 # this is the Alembic Config object, which provides

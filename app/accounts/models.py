@@ -20,7 +20,6 @@ from sqlalchemy.orm import (
     relationship,
 )
 
-# from app import OrderModel, PaymentModel
 from core.database import Base
 from core.utils import generate_secure_token, verify_password, hash_password
 from app.accounts.validators import validate_password_strength
@@ -130,7 +129,9 @@ class UserModel(Base):
 
     @property
     def password(self) -> None:
-        raise AttributeError("Password is write-only. Use the setter to set the password.")
+        raise AttributeError(
+            "Password is write-only. Use the setter to set the password."
+        )
 
     @password.setter
     def password(self, raw_password: str) -> None:
@@ -236,7 +237,9 @@ class RefreshTokenModel(TokenBaseModel):
     )
 
     @classmethod
-    def create(cls, user_id: int, days_valid: int, token: str) -> "RefreshTokenModel":
+    def create(
+        cls, user_id: int, days_valid: int, token: str
+    ) -> "RefreshTokenModel":
         """
         Factory method to create a new RefreshTokenModel instance.
 
