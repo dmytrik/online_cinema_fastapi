@@ -5,7 +5,6 @@ from typing import Optional
 from sqlalchemy import ForeignKey, DateTime, func, Enum, DECIMAL
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.payments.models import PaymentItemModel
 from core.database import Base
 
 
@@ -46,6 +45,7 @@ class OrderModel(Base):
             f"status={self.status}, total_amount={self.total_amount})>"
         )
 
+
 class OrderItemModel(Base):
     __tablename__ = "order_items"
 
@@ -69,7 +69,7 @@ class OrderItemModel(Base):
     )
 
     payment_items: Mapped[list["PaymentItemModel"]] = relationship(
-        "PaymentItemModel", back_populates="order_items"
+        "PaymentItemModel", back_populates="order_item"
     )
 
     def __repr__(self):

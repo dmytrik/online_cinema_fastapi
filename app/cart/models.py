@@ -14,18 +14,18 @@ class CartModel(Base):
         ForeignKey("users.id"), nullable=True, unique=True
     )
     user: Mapped["UserModel"] = relationship(
-        "UserModel", back_populates="carts"
+        "UserModel", back_populates="cart"
     )
 
-    cart_items: Mapped[list["CartItem"]] = relationship(
-        "CartItem", back_populates="cart"
+    cart_items: Mapped[list["CartItemModel"]] = relationship(
+        "CartItemModel", back_populates="cart"
     )
 
     def __repr__(self):
         return f"<CartModel(id={self.id}, user_id={self.user_id}>"
 
 
-class CartItem(Base):
+class CartItemModel(Base):
     __tablename__ = "cart_items"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -39,8 +39,8 @@ class CartItem(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    cart = relationship("CartModel", back_populates="items")
-    movie = relationship("MovieModel", back_populates="cart_item")
+    cart = relationship("CartModel", back_populates="cart_items")
+    movie = relationship("MovieModel", back_populates="cart_items")
 
     __table_args__ = (
         UniqueConstraint(

@@ -9,21 +9,14 @@ class Settings(BaseSettings):
     ENVIRONMENT: str
     DATABASE_POSTGRES_URL: str
     DATABASE_SQLITE_URL: str
-    SECRET_KEY: str
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    SECRET_KEY_ACCESS: str
+    SECRET_KEY_REFRESH: str
+    JWT_SIGNING_ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_DAYS: int = 5
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 14
 
     @property
     def DATABASE_URL(self) -> str:
-        if self.ENVIRONMENT == "local":
-            return self.DATABASE_SQLITE_URL.replace(
-                "sqlite://", "sqlite+aiosqlite://"
-            )
-        return self.DATABASE_POSTGRES_URL
-
-    @property
-    def DATABASE_URL_SYNC(self) -> str:
-        """URL для Alembic (sync)"""
         if self.ENVIRONMENT == "local":
             return self.DATABASE_SQLITE_URL
         return self.DATABASE_POSTGRES_URL

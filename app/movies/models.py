@@ -11,13 +11,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy.dialects.postgresql import UUID
-from alembic import context
 
-from app.orders.models import OrderItemModel
 from core.database import Base
-
-
-db_url = context.config.get_main_option("sqlalchemy.url")
+from core.config import settings
 
 
 class MovieStatusEnum(str, Enum):
@@ -140,7 +136,7 @@ class MovieModel(Base):
     __tablename__ = "movies"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    if db_url.startswith("postgresql"):
+    if settings.DATABASE_URL.startswith("postgresql"):
         uuid = Column(UUID(as_uuid=True), default=uuid.uuid4)
     else:
         uuid = Column(String, default=lambda: str(uuid.uuid4()))
@@ -179,8 +175,8 @@ class MovieModel(Base):
         "OrderItemModel", back_populates="movie"
     )
 
-    cart_items: Mapped[list["CartItem"]] = relationship(
-        "CartItem", back_populates="movie"
+    cart_items: Mapped[list["CartItemModel"]] = relationship(
+        "CartItemModel", back_populates="movie"
     )
 
     __table_args__ = (
