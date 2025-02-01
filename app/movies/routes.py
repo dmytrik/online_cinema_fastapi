@@ -14,6 +14,7 @@ from app.movies.schemas import (
     MovieListResponseSchema,
     MovieCreateSchema,
     MovieDetailSchema,
+    MovieUpdateSchema,
 )
 
 from core.database import get_db
@@ -69,7 +70,7 @@ def get_movie_list(
 def create_movie(
         movie_data: MovieCreateSchema,
         db: Session = Depends(get_db)
-):
+) -> MovieDetailSchema:
     existing_movie = db.query(MovieModel).filter(
         MovieModel.name == movie_data.name,
         MovieModel.year == movie_data.year
@@ -144,7 +145,7 @@ def create_movie(
 def get_movie_by_id(
         movie_id: int,
         db: Session = Depends(get_db)
-):
+) -> MovieDetailSchema:
     movie = (
         db.query(MovieModel)
         .options(
@@ -181,3 +182,30 @@ def delete_movie(movie_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return {"detail": "Movie deleted successfully."}
+
+
+@router.patch("/{movie_id}/")
+def update_movie(
+        movie_id: int,
+        movie_data: MovieUpdateSchema,
+        db: Session = Depends(get_db)
+):
+    movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
+
+    if not movie:
+        raise HTTPException(
+            status_code=404,
+            detail="Movie with the given ID was not found."
+        )
+
+    for field, value in movie_data.model_dump(exclude_unset=True).items():
+        setattr(movie, field, value)
+
+    try:
+        db.commit()
+        db.refresh(movie)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Invalid input data.")
+    else:
+        return {"detail": "Movie updated successfully."}
