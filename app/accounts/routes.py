@@ -7,9 +7,6 @@ from sqlalchemy.orm import Session
 
 from core.dependencies import (
     get_jwt_auth_manager,
-    # get_settings,
-    # get_accounts_email_notificator,
-    # BaseAppSettings
 )
 from app.accounts.models import (
     UserModel,

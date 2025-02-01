@@ -24,3 +24,9 @@ class CartDetailResponseSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AdminInfoSchema(BaseModel):
+    user_id: int
+    user_email: str
+    movies: list[str]

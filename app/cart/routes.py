@@ -3,8 +3,15 @@ from fastapi.params import Depends
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.accounts.models import UserModel
 from app.cart.models import CartModel, CartItemModel, Purchases
-from app.cart.schemas import CartRequestSchema, CartResponseSchema, CartDetailResponseSchema, CartMovieInfo
+from app.cart.schemas import (
+    CartRequestSchema,
+    CartResponseSchema,
+    CartDetailResponseSchema,
+    CartMovieInfo,
+    AdminInfoSchema
+)
 from app.movies.models import MovieModel
 from core.database import get_db
 from core.dependencies import get_jwt_auth_manager
@@ -13,6 +20,7 @@ from security.http import get_token
 from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
+
 
 @router.post("/", response_model=CartResponseSchema)
 def create_or_update_cart(
@@ -145,9 +153,8 @@ def remove_cart(
     return
 
 
-@router.get("/{cart_id}/", response_model=CartDetailResponseSchema)
+@router.get("/", response_model=CartDetailResponseSchema | list[AdminInfoSchema])
 def get_cart_by_id(
-        cart_id: int,
         db: Session = Depends(get_db),
         token: str = Depends(get_token),
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
@@ -160,7 +167,29 @@ def get_cart_by_id(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e)
         )
-    cart = db.query(CartModel).filter_by(id=cart_id).first()
+    user = db.query(UserModel).filter_by(id=user_id).first()
+    if not user:
+        raise HTTPException(
+            status=status.HTTP_400_BAD_REQUEST,
+            detail="user not found"
+        )
+
+    if user.group.name == "admin":
+        all_carts = db.query(CartModel).all()
+        carts_data = [
+            {
+                "user_id": cart.user_id,
+                "user_email": db.query(UserModel).filter_by(id=cart.user_id).first().email,
+                "movies": [
+                    db.query(MovieModel).filter_by(id=cart_item.movie_id).first().name
+                    for cart_item in cart.cart_items
+                ]
+            }
+            for cart in all_carts
+        ]
+        return carts_data
+
+    cart = db.query(CartModel).filter_by(id=user.cart.id).first()
 
     if not cart:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cart not found")
