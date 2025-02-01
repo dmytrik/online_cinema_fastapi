@@ -48,14 +48,6 @@ class ActorSchema(BaseModel):
 
 
 class MovieBaseSchema(BaseModel):
-    # name: str = Field(..., max_length=255)
-    # date: date
-    # score: float = Field(..., ge=0, le=100)
-    # overview: str
-    # status: MovieStatusEnum
-    # budget: float = Field(..., ge=0)
-    # revenue: float = Field(..., ge=0)
-
     name: str
     year: int
     time: int
@@ -94,6 +86,7 @@ class MovieListItemSchema(BaseModel):
         "from_attributes": True,
     }
 
+
 class MovieListResponseSchema(BaseModel):
     movies: List[MovieListItemSchema]
     prev_page: Optional[str]
@@ -104,6 +97,7 @@ class MovieListResponseSchema(BaseModel):
     model_config = {
         "from_attributes": True,
     }
+
 
 class MovieCreateSchema(BaseModel):
     name: str
@@ -119,6 +113,22 @@ class MovieCreateSchema(BaseModel):
     genres: List[str]
     directors: List[str]
     stars: List[str]
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+
+class MovieUpdateSchema(BaseModel):
+    name: Optional[str] = None
+    year: Optional[int] = None
+    time: Optional[int] = None
+    imdb: Optional[float] = None
+    votes: Optional[int] = None
+    meta_score: Optional[float] = Field(None, ge=0)
+    gross: Optional[float] = Field(None, ge=0)
+    description: Optional[str] = None
+    price: Optional[float] = Field(None, ge=0)
 
     model_config = {
         "from_attributes": True,
