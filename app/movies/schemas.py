@@ -1,6 +1,52 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
+
+class GenreSchema(BaseModel):
+    id: int
+    name: str
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+
+class StarSchema(BaseModel):
+    id: int
+    name: str
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+
+class DirectorSchema(BaseModel):
+    id: int
+    name: str
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+
+class CertificationSchema(BaseModel):
+    id: int
+    name: str
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+
+class ActorSchema(BaseModel):
+    id: int
+    name: str
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+
 class MovieBaseSchema(BaseModel):
     # name: str = Field(..., max_length=255)
     # date: date
@@ -25,6 +71,18 @@ class MovieBaseSchema(BaseModel):
     }
 
 
+class MovieDetailSchema(MovieBaseSchema):
+    id: int
+    certification: CertificationSchema
+    genres: List[GenreSchema]
+    directors: List[DirectorSchema]
+    stars: List[StarSchema]
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+
 class MovieListItemSchema(BaseModel):
     id: int
     name: str
@@ -42,6 +100,25 @@ class MovieListResponseSchema(BaseModel):
     next_page: Optional[str]
     total_pages: int
     total_items: int
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+class MovieCreateSchema(BaseModel):
+    name: str
+    year: int
+    time: int
+    imdb: float
+    votes: int
+    meta_score: float
+    gross: float
+    description: str
+    price: float
+    certification: str
+    genres: List[str]
+    directors: List[str]
+    stars: List[str]
 
     model_config = {
         "from_attributes": True,
