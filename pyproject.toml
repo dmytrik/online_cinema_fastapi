@@ -26,6 +26,8 @@ ruff = "^0.9.3"
 guid = "^0.2.1"
 python-dotenv = "^1.0.1"
 aiosqlite = "^0.20.0"
+pytest = "^8.3.4"
+httpx = "^0.28.1"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -81,7 +83,7 @@ target-version = "py312"
 # Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
 # McCabe complexity (`C901`) by default.
 select = ["E4", "E7", "E9", "F"]
-ignore = ["F821", "F401"]
+ignore = ["F821", "F401", "E402"]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]

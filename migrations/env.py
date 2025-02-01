@@ -2,7 +2,11 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-
+from app.orders import models as orders_models # noqa: F401
+from app.payments import models as payments_models # noqa: F401
+from app.accounts import models as accounts_models # noqa: F401
+from app.cart import models as cart_models # noqa: F401
+from app.movies import models as movies_models # noqa: F401
 from alembic import context
 from core.database import Base
 
