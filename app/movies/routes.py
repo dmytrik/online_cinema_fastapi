@@ -164,3 +164,20 @@ def get_movie_by_id(
         )
 
     return MovieDetailSchema.model_validate(movie)
+
+
+
+@router.delete("/{movie_id}/", status_code=status.HTTP_204_NO_CONTENT)
+def delete_movie(movie_id: int, db: Session = Depends(get_db)):
+    movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
+
+    if not movie:
+        raise HTTPException(
+            status_code=404,
+            detail="Movie with the given ID was not found."
+        )
+
+    db.delete(movie)
+    db.commit()
+
+    return {"detail": "Movie deleted successfully."}
