@@ -1,10 +1,10 @@
-from sqlalchemy import DateTime
+from datetime import datetime
 
 from pydantic import BaseModel
 
 
 class OrderResponseSchema(BaseModel):
-    date: DateTime
+    date: datetime
     movies: list[str]
     total_amount: float
     status: str

@@ -64,6 +64,7 @@ def create_or_update_cart(
             db.add(cart_item)
             db.commit()
         except SQLAlchemyError:
+            db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid data"
