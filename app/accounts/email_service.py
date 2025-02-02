@@ -11,7 +11,7 @@ def send_activation_email(to_email: str, activation_token: str) \
 
         subject = "Activate Your Account"
         body = (f"Please click the link to activate your account: "
-                f"{settings.PASSWORD_RESET_URL}/{activation_token}")
+                f"{settings.ACTIVATION_URL}/{activation_token}")
 
         msg = MIMEMultipart()
         msg["From"] = sender_email

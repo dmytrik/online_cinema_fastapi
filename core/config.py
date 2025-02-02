@@ -44,6 +44,7 @@ class Settings(BaseAppSettings):
     EMAIL_HOST_USER: str = os.getenv("EMAIL_HOST_USER")
     EMAIL_HOST_PASSWORD: str = os.getenv("EMAIL_HOST_PASSWORD")
     PASSWORD_RESET_URL: str = os.getenv("PASSWORD_RESET_URL")
+    ACTIVATION_URL: str = os.getenv("ACTIVATION_URL")
 
     @property
     def DATABASE_URL(self) -> str:
