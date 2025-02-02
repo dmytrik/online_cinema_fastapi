@@ -18,6 +18,7 @@ from app.accounts.models import (
 )
 from app.accounts.email_service import (
     send_password_reset_email,
+    send_activation_email,
 )
 from core.database import get_db
 from core.config import settings
@@ -122,6 +123,8 @@ def register_user(
         new_user.activation_token = activation_token
 
         db.commit()
+
+        send_activation_email(new_user.email, activation_token.token)
 
         return new_user
     except SQLAlchemyError as err:
