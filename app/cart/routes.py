@@ -38,43 +38,46 @@ def create_or_update_cart(
             detail=str(e)
         )
 
+    purchase = db.query(Purchases).filter_by(user_id=user_id, movie_id=cart_data.movie_id).first()
+
+    if purchase:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You have already bought this movie(")
+
+    movie = db.query(MovieModel).filter_by(id=cart_data.movie_id).first()
+    if not movie:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid input data.")
+
+    cart = db.query(CartModel).filter_by(user_id=user_id).first()
+
+    if not cart:
+        cart = CartModel(
+            user_id=user_id
+        )
+        db.add(cart)
+        db.flush()
+
+    if cart_data.movie_id in [cart_item.movie_id for cart_item in cart.cart_items]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="movie already in your cart"
+        )
+
     try:
-        purchase = db.query(Purchases).filter_by(user_id=user_id, movie_id=cart_data.movie_id).first()
-
-        if purchase:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You have already bought this movie(")
-
-        movie = db.query(MovieModel).filter_by(id=cart_data.movie_id).first()
-        if not movie:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid input data.")
-
-        cart = db.query(CartModel).filter_by(user_id=user_id).first()
-
-        if not cart:
-            cart = CartModel(
-                user_id=user_id
-            )
-            db.add(cart)
-            db.flush()
-        try:
-            cart_item = CartItemModel(
-                cart_id=cart.id,
-                movie_id=cart_data.movie_id
-            )
-            db.add(cart_item)
-            db.commit()
-        except SQLAlchemyError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid data"
-            )
-
+        cart_item = CartItemModel(
+            cart_id=cart.id,
+            movie_id=cart_data.movie_id
+        )
+        db.add(cart_item)
+        db.commit()
         return {
             "message": f"{movie.name} added in cart successfully"
         }
     except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid input data.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid input data"
+        )
 
 
 @router.delete("/", response_model=CartResponseSchema)
@@ -121,9 +124,8 @@ def remove_movie_from_cart(
     }
 
 
-@router.delete("/{cart_id}/", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/cart/", status_code=status.HTTP_204_NO_CONTENT)
 def remove_cart(
-        cart_id: int,
         db: Session = Depends(get_db),
         token: str = Depends(get_token),
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
@@ -136,16 +138,10 @@ def remove_cart(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e)
         )
-    cart = db.query(CartModel).filter_by(id=cart_id).first()
+    cart = db.query(CartModel).filter_by(user_id=user_id).first()
 
     if not cart:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cart not found")
-
-    if cart.user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
 
     db.delete(cart)
     db.commit()
