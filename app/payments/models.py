@@ -9,6 +9,7 @@ from core.database import Base
 
 
 class PaymentStatusEnum(str, enum.Enum):
+    PENDING = "pending"
     SUCCESSFUL = "successful"
     CANCELED = "canceled"
     REFUNDED = "refunded"
@@ -29,7 +30,7 @@ class PaymentModel(Base):
     )
     status: Mapped[PaymentStatusEnum] = mapped_column(
         Enum(PaymentStatusEnum),
-        default=PaymentStatusEnum.SUCCESSFUL,
+        default=PaymentStatusEnum.PENDING,
         nullable=False,
     )
     amount: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
