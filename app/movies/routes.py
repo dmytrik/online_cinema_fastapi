@@ -2,6 +2,11 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 from fastapi.params import Depends
 
+from app.accounts.models import (
+    UserGroupModel,
+    UserModel,
+    UserGroupEnum,
+)
 from app.movies.models import (
     MovieModel,
     GenreModel,
@@ -19,6 +24,11 @@ from app.movies.schemas import (
 
 from core.database import get_db
 from sqlalchemy.orm import Session, joinedload
+from core.dependencies import get_jwt_auth_manager
+from security.interfaces import JWTAuthManagerInterface
+from exceptions import BaseSecurityError
+from security.http import get_token
+
 
 router = APIRouter()
 
@@ -69,12 +79,38 @@ def get_movie_list(
 )
 def create_movie(
         movie_data: MovieCreateSchema,
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        token: str = Depends(get_token),
 ) -> MovieDetailSchema:
+
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    user_group_name =  (
+        db.query(UserGroupModel.name)
+        .join(UserModel, UserModel.group_id == UserGroupModel.id)
+        .filter(UserModel.id == user_id)
+        .scalar()
+    )
+
+    if user_group_name not in {UserGroupEnum.ADMIN, UserGroupEnum.MODERATOR}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied: you must be admin or moderator."
+        )
+
     existing_movie = db.query(MovieModel).filter(
         MovieModel.name == movie_data.name,
         MovieModel.year == movie_data.year
     ).first()
+
 
     if existing_movie:
         raise HTTPException(
@@ -169,7 +205,36 @@ def get_movie_by_id(
 
 
 @router.delete("/{movie_id}/", status_code=status.HTTP_204_NO_CONTENT)
-def delete_movie(movie_id: int, db: Session = Depends(get_db)):
+def delete_movie(
+        movie_id: int,
+        db: Session = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        token: str = Depends(get_token),
+):
+
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    user_group_name =  (
+        db.query(UserGroupModel.name)
+        .join(UserModel, UserModel.group_id == UserGroupModel.id)
+        .filter(UserModel.id == user_id)
+        .scalar()
+    )
+
+    if user_group_name not in {UserGroupEnum.ADMIN, UserGroupEnum.MODERATOR}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied: you must be admin or moderator."
+        )
+
+
     movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
 
     if not movie:
@@ -188,8 +253,32 @@ def delete_movie(movie_id: int, db: Session = Depends(get_db)):
 def update_movie(
         movie_id: int,
         movie_data: MovieUpdateSchema,
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        token: str = Depends(get_token),
 ):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    user_group_name =  (
+        db.query(UserGroupModel.name)
+        .join(UserModel, UserModel.group_id == UserGroupModel.id)
+        .filter(UserModel.id == user_id)
+        .scalar()
+    )
+
+    if user_group_name not in {UserGroupEnum.ADMIN, UserGroupEnum.MODERATOR}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied: you must be admin or moderator."
+        )
+
     movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
 
     if not movie:
