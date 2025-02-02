@@ -1,25 +1,28 @@
 from datetime import date
 
-from fastapi import APIRouter, status, Depends, HTTPException
-from sqlalchemy import func
+from fastapi import APIRouter, status, Depends, HTTPException, responses
+from sqlalchemy import func, and_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.accounts.models import UserModel
+from app.cart.models import Purchases
 from app.movies.models import MovieModel
 from app.orders.models import OrderModel, OrderItemModel
-from app.orders.schemas import OrderResponseSchema
+from app.orders.schemas import OrderCreateResponseSchema, OrderListResponseSchema
+from app.payments.models import PaymentModel
 from core.database import get_db
 from core.dependencies import get_jwt_auth_manager
 from exceptions import BaseSecurityError
 from security.http import get_token
 from security.interfaces import JWTAuthManagerInterface
+from app.payments.services import create_stripe_session
 
 
 router = APIRouter()
 
 
-@router.get("/", response_model=list[OrderResponseSchema], status_code=status.HTTP_200_OK)
+@router.get("/", response_model=list[OrderListResponseSchema], status_code=status.HTTP_200_OK)
 def get_orders(
         id_user: int = None,
         order_date: date = None,
@@ -66,7 +69,7 @@ def get_orders(
     ]
 
 
-@router.post("/", response_model=OrderResponseSchema, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=OrderCreateResponseSchema, status_code=status.HTTP_201_CREATED)
 def create_order(
         db: Session = Depends(get_db),
         token: str = Depends(get_token),
@@ -136,15 +139,59 @@ def create_order(
         ]
 
         db.add_all(order_items)
+        session_url = create_stripe_session(order, user_id, db)
         db.commit()
         return {
             "date": order.created_at,
             "movies": [movie.name for movie in movies],
             "total_amount": order.total_amount,
-            "status": order.status
+            "status": order.status,
+            "pay_here": session_url
         }
     except SQLAlchemyError:
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create order"
+        )
+
+
+@router.post("/refund/", status_code=status.HTTP_200_OK)
+def refund_order(
+        order_id: int,
+        db: Session = Depends(get_db),
+        token: str = Depends(get_token),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+
+    order = db.query(OrderModel).filter_by(id=order_id).first()
+    payment = db.query(PaymentModel).filter_by(order_id=order_id).first()
+    if order.user_id != user_id or payment.status == "refunded":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    try:
+        order.status = "canceled"
+        payment.status = "refunded"
+        movie_ids = [order_item.movie_id for order_item in order.order_items]
+        db.query(Purchases).filter(
+            and_(Purchases.movie_id.in_(movie_ids), Purchases.user_id == user_id)
+        ).delete()
+        db.commit()
+        return {
+            "message": "your order was refunded"
+        }
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
