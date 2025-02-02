@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str
     DATABASE_POSTGRES_URL: str
     DATABASE_SQLITE_URL: str
+    STRIPE_SECRET_KEY: str
     SECRET_KEY_ACCESS: str
     SECRET_KEY_REFRESH: str
     JWT_SIGNING_ALGORITHM: str
