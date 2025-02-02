@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 from fastapi.params import Depends
@@ -36,6 +38,8 @@ router = APIRouter()
 
 @router.get("/", response_model=MovieListResponseSchema)
 def get_movie_list(
+        year: Optional[int] = None,
+        imdb: Optional[int] = None,
         page: int = Query(1, ge=1, description="Page number (1-based index)"),
         per_page: int = Query(10, ge=1, le=20, description="Number of items per page"),
         db: Session = Depends(get_db),
@@ -44,6 +48,12 @@ def get_movie_list(
     offset = (page - 1) * per_page
 
     query = db.query(MovieModel).order_by()
+
+    if year:
+        query = query.filter_by(year=year)
+
+    if imdb:
+        query = query.filter_by(imdb=imdb)
 
     order_by = MovieModel.default_order_by()
 
