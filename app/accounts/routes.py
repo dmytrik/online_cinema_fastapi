@@ -550,3 +550,61 @@ def refresh_access_token(
 
     return TokenRefreshResponseSchema(access_token=new_access_token)
 
+
+@router.post(
+    "/resend_activation_token/",
+    summary="Resend Activation Token",
+    description="Resend the activation token if the previous one expired.",
+    status_code=status.HTTP_200_OK,
+    responses={
+        404: {
+            "description": "User Not Found - The user does not exist.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "User not found."}
+                }
+            },
+        },
+        400: {
+            "description": "Bad Request - Invalid or expired activation token.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Activation token expired or invalid."}
+                }
+            },
+        },
+    },
+)
+def resend_activation_token(
+        user_data: UserRegistrationRequestSchema,
+        db: Session = Depends(get_db),
+):
+    """
+    Endpoint to resend the activation token if the previous one expired.
+    """
+    db_user = db.query(UserModel).filter(UserModel.email == user_data.email).first()
+
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    activation_token = db.query(ActivationTokenModel).filter_by(user_id=db_user.id).first()
+
+    if activation_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Activation token is still valid."
+        )
+    activation_token = ActivationTokenModel(
+        user_id=db_user.id,
+        user=db_user
+
+    )
+    db.add(activation_token)
+    db.flush()
+    db.refresh(activation_token)
+    db.commit()
+
+    return {"detail": "Activation token resent successfully."}
