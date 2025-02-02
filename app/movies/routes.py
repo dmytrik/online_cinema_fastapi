@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 from fastapi.params import Depends
+from sqlalchemy import asc, desc
 
 from app.accounts.models import (
     UserGroupModel,
@@ -40,6 +41,8 @@ router = APIRouter()
 def get_movie_list(
         year: Optional[int] = None,
         imdb: Optional[int] = None,
+        sort_by: Optional[str] = "id",
+        sort_order: Optional[str] = "desc",
         page: int = Query(1, ge=1, description="Page number (1-based index)"),
         per_page: int = Query(10, ge=1, le=20, description="Number of items per page"),
         db: Session = Depends(get_db),
@@ -55,10 +58,20 @@ def get_movie_list(
     if imdb:
         query = query.filter_by(imdb=imdb)
 
-    order_by = MovieModel.default_order_by()
+    if sort_order not in ["asc", "desc"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid sort_order. Use 'asc' or 'desc'."
+        )
 
-    if order_by:
-        query = query.order_by(*order_by)
+    if sort_by not in ["id", "year", "imdb", "name", "price"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid sort_by field. Allowed values are id, year, imdb, name, price."
+        )
+
+    sort_direction = asc if sort_order == "asc" else desc
+    query = query.order_by(sort_direction(getattr(MovieModel, sort_by)))
 
     total_items = query.count()
     movies = query.offset(offset).limit(per_page).all()
