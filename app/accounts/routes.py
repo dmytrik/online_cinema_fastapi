@@ -31,6 +31,7 @@ from app.accounts.schemas import (
     TokenRefreshRequestSchema,
     TokenRefreshResponseSchema,
 )
+from security.http import get_token
 from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
@@ -608,3 +609,41 @@ def resend_activation_token(
     db.commit()
 
     return {"detail": "Activation token resent successfully."}
+
+
+@router.put("/users/{user_id}/group", status_code=status.HTTP_200_OK)
+def update_user_group(
+        user_id: int,
+        group_name: str,
+        db: Session = Depends(get_db),
+        token: str = Depends(get_token),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+):
+    """Endpoint for changing the user group
+    (only available to administrators)"""
+
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        current_user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+
+    current_user = db.query(UserModel).filter_by(id=current_user_id).first()
+
+    if not current_user or current_user.group.name != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    new_group = db.query(UserGroupModel).filter_by(name=group_name).first()
+    if not new_group:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid group name")
+
+    user_to_update = db.query(UserModel).filter_by(id=user_id).first()
+    if not user_to_update:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    user_to_update.group = new_group
+    db.commit()
+    db.refresh(user_to_update)
+
+    return {"message": "User group updated successfully", "user_id": user_to_update.id,
+            "new_group": user_to_update.group.name}
