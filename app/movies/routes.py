@@ -7,6 +7,7 @@ from app.accounts.models import (
     UserModel,
     UserGroupEnum,
 )
+from app.cart.models import Purchases
 from app.movies.models import (
     MovieModel,
     GenreModel,
@@ -234,6 +235,14 @@ def delete_movie(
             detail="Permission denied: you must be admin or moderator."
         )
 
+    # purchased_movies = db.query(Purchases).filter(Purchases.user_id == user_id, Purchases.movie_id == movie_id).first()
+    purchased_movie = db.query(Purchases).filter(Purchases.movie_id == movie_id).first()
+
+    if purchased_movie:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This movie cannot be deleted as it has been purchased."
+        )
 
     movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
 
