@@ -18,7 +18,7 @@ class CartModel(Base):
     )
 
     cart_items: Mapped[list["CartItemModel"]] = relationship(
-        "CartItemModel", back_populates="cart"
+        "CartItemModel", back_populates="cart", cascade="all, delete-orphan"
     )
 
     def __repr__(self):
@@ -50,3 +50,18 @@ class CartItemModel(Base):
 
     def __repr__(self):
         return f"<CartItemModel(id={self.id}, cart_id={self.cart_id}, movie_id={self.movie_id}, added_at={self.added_at})>"
+
+
+class Purchases(Base):
+
+    __tablename__ = "purchases"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int]
+    movie_id: Mapped[int]
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "movie_id", name="unique_purchases_constraint"
+        ),
+    )

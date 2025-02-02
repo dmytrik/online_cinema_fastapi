@@ -127,6 +127,18 @@ class UserModel(Base):
     def __repr__(self):
         return f"<UserModel(id={self.id}, email={self.email}, is_active={self.is_active})>"
 
+    @classmethod
+    def create(cls, email: str, raw_password: str, group_id: int | Mapped[int]) -> "UserModel":
+        """
+        Factory method to create a new UserModel instance.
+
+        This method simplifies the creation of a new user by handling
+        password hashing and setting required attributes.
+        """
+        user = cls(email=email, group_id=group_id)
+        user.password = raw_password
+        return user
+
     @property
     def password(self) -> None:
         raise AttributeError(
@@ -252,3 +264,7 @@ class RefreshTokenModel(TokenBaseModel):
 
     def __repr__(self):
         return f"<RefreshTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
+
+from app.orders.models import OrderModel
+from app.payments.models import PaymentModel
+from app.cart.models import CartModel
