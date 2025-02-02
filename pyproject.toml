@@ -15,7 +15,7 @@ email-validator = "^2.2.0"
 python-jose = "^3.3.0"
 cryptography = "43.0.1"
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
-celery = "^5.4.0"
+celery = {extras = ["redis"], version = "^5.4.0"}
 redis = "^5.2.1"
 minio = "^7.2.15"
 stripe = "^11.5.0"
@@ -26,6 +26,7 @@ ruff = "^0.9.3"
 guid = "^0.2.1"
 python-dotenv = "^1.0.1"
 aiosqlite = "^0.20.0"
+psycopg2-binary = "^2.9.10"
 
 
 [tool.poetry.group.dev.dependencies]
