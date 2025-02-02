@@ -5,7 +5,7 @@ from app.cart.routes import router as cart_router
 from app.orders.routes import router as order_router
 from app.movies.routes import router as movies_router
 
-app = FastAPI(title="Movies homework", description="Description of project")
+app = FastAPI(title="Online cinema", description="Description of project")
 
 api_version_prefix = "/api/v1"
 

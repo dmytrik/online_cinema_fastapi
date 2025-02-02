@@ -37,6 +37,13 @@ class Settings(BaseAppSettings):
     POSTGRES_DB_PORT: int = int(os.getenv("POSTGRES_DB_PORT", 5432))
     POSTGRES_DB: str = os.getenv("POSTGRES_DB", "test_db")
 
+    # Email settings
+    EMAIL_HOST: str = os.getenv("EMAIL_HOST")
+    EMAIL_PORT: int = int(os.getenv("EMAIL_PORT", 465))
+    EMAIL_HOST_USER: str = os.getenv("EMAIL_HOST_USER")
+    EMAIL_HOST_PASSWORD: str = os.getenv("EMAIL_HOST_PASSWORD")
+    PASSWORD_RESET_URL: str = os.getenv("PASSWORD_RESET_URL")
+
     @property
     def DATABASE_URL(self) -> str:
         if self.ENVIRONMENT == "local":

@@ -16,6 +16,9 @@ from app.accounts.models import (
     PasswordResetTokenModel,
     RefreshTokenModel,
 )
+from app.accounts.email_service import (
+    send_password_reset_email,
+)
 from core.database import get_db
 from core.config import settings
 from exceptions import BaseSecurityError
@@ -236,6 +239,12 @@ def request_password_reset_token(
     reset_token = PasswordResetTokenModel(user_id=cast(int, user.id))
     db.add(reset_token)
     db.commit()
+
+    # sending an email
+    if user and isinstance(user, UserModel) and user.email:
+        send_password_reset_email(user.email, reset_token.token)
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     return MessageResponseSchema(
         message="If you are registered, you will receive an email with instructions."
