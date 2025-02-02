@@ -7,7 +7,7 @@ from app.orders.routes import router as order_router
 from app.movies.routes import router as movies_router
 from app.payments.routes import router as payment_router
 
-app = FastAPI(title="Movies homework", description="Description of project")
+app = FastAPI(title="Online cinema", description="Description of project")
 
 app.add_middleware(
     CORSMiddleware,

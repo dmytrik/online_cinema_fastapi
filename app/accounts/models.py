@@ -224,6 +224,16 @@ class ActivationTokenModel(TokenBaseModel):
     def __repr__(self):
         return f"<ActivationTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
 
+    @classmethod
+    def is_expired(cls, token: "ActivationTokenModel", current_time: datetime) -> bool:
+        return token.expires_at < current_time
+
+    @classmethod
+    def generate_new_token(cls, user_id: int) -> "ActivationTokenModel":
+        new_token = generate_secure_token()
+        expiration_time = datetime.now(timezone.utc) + timedelta(hours=24)
+        return cls(user_id=user_id, token=new_token, expires_at=expiration_time)
+
 
 class PasswordResetTokenModel(TokenBaseModel):
     __tablename__ = "password_reset_tokens"
