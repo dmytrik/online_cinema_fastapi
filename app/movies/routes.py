@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query, status, Response
+from fastapi import APIRouter, HTTPException, Query, status, Response, BackgroundTasks
 from sqlalchemy.exc import IntegrityError
 from fastapi.params import Depends
 from sqlalchemy import asc, desc
@@ -36,6 +36,7 @@ from core.dependencies import get_jwt_auth_manager
 from security.interfaces import JWTAuthManagerInterface
 from exceptions import BaseSecurityError
 from security.http import get_token
+from app.accounts.email_service import send_email
 
 
 router = APIRouter()
@@ -430,7 +431,6 @@ def delete_movie(
             detail="Permission denied: you must be admin or moderator."
         )
 
-    # purchased_movies = db.query(Purchases).filter(Purchases.user_id == user_id, Purchases.movie_id == movie_id).first()
     purchased_movie = db.query(Purchases).filter(Purchases.movie_id == movie_id).first()
 
     if purchased_movie:
@@ -631,6 +631,7 @@ def get_comments(
 @router.post("/answer/")
 def add_answer_comment(
         answer_data: MovieAnswerCommentSchema,
+        background_tasks: BackgroundTasks,
         db: Session = Depends(get_db),
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
         token: str = Depends(get_token),
@@ -653,5 +654,17 @@ def add_answer_comment(
     db.add(answer)
     db.commit()
     db.refresh(answer)
+
+    comment = db.query(MovieCommentModel).filter_by(id=answer.comment_id).first()
+    user_email = db.query(UserModel).filter_by(id=comment.user_id).first().email
+    subject = "You have got answer on your comment"
+    body = answer_data.comment
+
+    background_tasks.add_task(
+        send_email,
+        user_email,
+        body,
+        subject,
+    )
 
     return answer
