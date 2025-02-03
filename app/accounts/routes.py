@@ -16,10 +16,7 @@ from app.accounts.models import (
     PasswordResetTokenModel,
     RefreshTokenModel,
 )
-from app.accounts.email_service import (
-    send_password_reset_email,
-    send_activation_email,
-)
+from app.accounts.email_service import send_email
 from core.database import get_db
 from core.config import settings
 from exceptions import BaseSecurityError
@@ -27,7 +24,6 @@ from app.accounts.schemas import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
     MessageResponseSchema,
-    UserActivationRequestSchema,
     PasswordResetRequestSchema,
     PasswordResetCompleteRequestSchema,
     UserLoginResponseSchema,
@@ -125,7 +121,12 @@ def register_user(
 
         db.commit()
 
-        send_activation_email(new_user.email, activation_token.token)
+        body = (f"Please click the link to activate your account: "
+                f"{settings.ACTIVATION_URL}/{activation_token.token}/")
+
+        subject = "Activate Your Account"
+
+        send_email(new_user.email, body, subject)
 
         return new_user
     except SQLAlchemyError as err:
@@ -133,8 +134,8 @@ def register_user(
         raise HTTPException(status_code=500, detail=str(err))
 
 
-@router.post(
-    "/activate/",
+@router.get(
+    "/activate/{activation_token}/",
     response_model=MessageResponseSchema,
     summary="Activate User Account",
     description="Activate a user's account using their email and activation token.",
@@ -165,8 +166,8 @@ def register_user(
     },
 )
 def activate_account(
-        activation_data: UserActivationRequestSchema,
-        db: Session = Depends(get_db),
+    activation_token: str,
+    db: Session = Depends(get_db),
 ) -> MessageResponseSchema:
     """
     Endpoint to activate a user's account.
@@ -178,8 +179,7 @@ def activate_account(
         db.query(ActivationTokenModel)
         .join(UserModel)
         .filter(
-            UserModel.email == activation_data.email,
-            ActivationTokenModel.token == activation_data.token,
+            ActivationTokenModel.token == activation_token,
         )
         .first()
     )
@@ -246,7 +246,10 @@ def request_password_reset_token(
 
     # sending an email
     if user and isinstance(user, UserModel) and user.email:
-        send_password_reset_email(user.email, reset_token.token)
+        body = (f"Please click the link to reset your password: "
+                f"{settings.PASSWORD_RESET_URL}. Enter your token {reset_token.token} in form")
+        subject = "Password Reset Request"
+        send_email(user.email, body, subject)
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
