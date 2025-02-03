@@ -133,3 +133,21 @@ class MovieUpdateSchema(BaseModel):
     model_config = {
         "from_attributes": True,
     }
+
+
+class MoviesRequestSchema(BaseModel):
+    id: int
+
+
+class MovieCommentSchema(BaseModel):
+    movie_id: int
+    comment: str
+
+
+class MovieCommentDeleteSchema(BaseModel):
+    id: int
+
+
+class MovieAnswerCommentSchema(BaseModel):
+    comment_id: int
+    comment: str
