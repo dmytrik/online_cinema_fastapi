@@ -1,7 +1,7 @@
 from typing import Optional
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import ForeignKey, func, DateTime, UniqueConstraint
+from sqlalchemy import ForeignKey, func, DateTime, UniqueConstraint, Index
 from core.database import Base
 from datetime import datetime
 
@@ -43,9 +43,7 @@ class CartItemModel(Base):
     movie = relationship("MovieModel", back_populates="cart_items")
 
     __table_args__ = (
-        UniqueConstraint(
-            "cart_id", "movie_id", name="unique_movie_constraint"
-        ),
+        Index("unique_movie_constraint", "cart_id", "movie_id", unique=True),
     )
 
     def __repr__(self):
@@ -61,7 +59,5 @@ class Purchases(Base):
     movie_id: Mapped[int]
 
     __table_args__ = (
-        UniqueConstraint(
-            "user_id", "movie_id", name="unique_purchases_constraint"
-        ),
+        Index("unique_purchases_constraint", "user_id", "movie_id", unique=True),
     )

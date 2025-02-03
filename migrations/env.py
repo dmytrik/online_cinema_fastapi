@@ -9,10 +9,16 @@ from app.cart import models as cart_models # noqa: F401
 from app.movies import models as movies_models # noqa: F401
 from alembic import context
 from core.database import Base
+from core.config import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -43,6 +49,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
+    config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,

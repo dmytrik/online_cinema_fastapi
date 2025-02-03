@@ -8,12 +8,10 @@ from sqlalchemy import (
     UniqueConstraint,
     ForeignKey,
     Table,
-    Column,
+    Column, Index,
 )
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy.dialects.postgresql import UUID
-
-# from app.accounts.models import UserModel
 from core.database import Base
 from core.config import settings
 
@@ -188,9 +186,7 @@ class MovieModel(Base):
                                                                  cascade="all, delete-orphan")
 
     __table_args__ = (
-        UniqueConstraint(
-            "name", "year", "time", name="unique_movie_constraint"
-        ),
+        Index("unique_movie_index", "name", "year", "time", unique=True),
     )
 
     @classmethod

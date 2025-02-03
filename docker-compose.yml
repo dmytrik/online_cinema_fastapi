@@ -28,6 +28,8 @@ services:
       - redis
     env_file:
       - .env
+    environment:
+      - ENVIRONMENT=docker
     ports:
       - "8000:8000"
     healthcheck:
@@ -36,6 +38,8 @@ services:
       retries: 5
       start_period: 10s
       timeout: 5s
+    command: >
+      sh -c "sleep 5 && alembic revision --autogenerate -m "init" && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
   celery_worker:
     build: .
