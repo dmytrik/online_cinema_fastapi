@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status, Response
 from sqlalchemy.exc import IntegrityError
 from fastapi.params import Depends
 from sqlalchemy import asc, desc
@@ -18,6 +18,8 @@ from app.movies.models import (
     CertificationModel,
     DirectorModel,
     FavoriteMovieModel,
+    MovieLikeModel,
+    MovieDislikeModel, MovieCommentModel, AnswerCommentsModel,
 )
 from app.movies.schemas import (
     MovieListItemSchema,
@@ -25,7 +27,7 @@ from app.movies.schemas import (
     MovieCreateSchema,
     MovieDetailSchema,
     MovieUpdateSchema,
-    FavoriteMoviesAddRequestSchema,
+    MoviesRequestSchema, MovieCommentSchema, MovieCommentDeleteSchema, MovieAnswerCommentSchema,
 )
 
 from core.database import get_db
@@ -37,6 +39,174 @@ from security.http import get_token
 
 
 router = APIRouter()
+
+@router.delete("/comments/")
+def remove_comments(
+        comment_data: MovieCommentDeleteSchema,
+        db: Session = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        token: str = Depends(get_token),
+):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    comments = db.query(MovieCommentModel).filter_by(user_id=user_id).all()
+
+    comments_ids = [comment.id for comment in comments]
+
+    if comment_data.id in comments_ids:
+        comment = db.query(MovieCommentModel).filter_by(id=comment_data.id).first()
+
+        db.delete(comment)
+        db.commit()
+        return Response(
+            status_code=status.HTTP_204_NO_CONTENT
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"comment with id {comment_data.id} was not found."
+    )
+
+
+@router.delete("/answer/")
+def remove_answer(
+        comment_data: MovieCommentDeleteSchema,
+        db: Session = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        token: str = Depends(get_token),
+):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    comments = db.query(AnswerCommentsModel).filter_by(user_id=user_id).all()
+
+    comments_ids = [comment.id for comment in comments]
+
+    if comment_data.id in comments_ids:
+        comment = db.query(AnswerCommentsModel).filter_by(id=comment_data.id).first()
+
+        db.delete(comment)
+        db.commit()
+        return Response(
+            status_code=status.HTTP_204_NO_CONTENT
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"comment with id {comment_data.id} was not found."
+    )
+
+
+@router.post("/favorite/")
+def add_favorite(
+        movie_data: MoviesRequestSchema,
+        db: Session = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        token: str = Depends(get_token),
+):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    existing_movie = db.query(MovieModel).get(movie_data.id)
+
+    if not existing_movie:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Movie with the given ID was not found."
+        )
+
+    existing_favorite = db.query(FavoriteMovieModel).filter_by(user_id=user_id, movie_id=movie_data.id).first()
+    if existing_favorite:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Movie already in favorites"
+        )
+
+    favorite = FavoriteMovieModel(user_id=user_id, movie_id=movie_data.id)
+    db.add(favorite)
+    db.commit()
+    return {"detail": "Movie added to favorites"}
+
+
+@router.delete("/favorite/")
+def remove_favorite(
+        movie_data: MoviesRequestSchema,
+        db: Session = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        token: str = Depends(get_token),
+):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    existing_movie = db.query(MovieModel).get(movie_data.id)
+
+    if not existing_movie:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Movie with the given ID was not found."
+        )
+
+    favorite = db.query(FavoriteMovieModel).filter_by(user_id=user_id, movie_id=movie_data.id).first()
+    if not favorite:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Movie not in favorites"
+        )
+
+    db.delete(favorite)
+    db.commit()
+    return {"detail": f"Movie with id: {movie_data.id} removed from favorites"}
+
+
+@router.get(
+    "/favorites/",
+    response_model=list[MovieListItemSchema]
+)
+def get_favorites(
+        db: Session = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        token: str = Depends(get_token),
+):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    movies = db.query(MovieModel).join(FavoriteMovieModel).filter(FavoriteMovieModel.user_id == user_id).all()
+
+    return [
+        MovieListItemSchema.model_validate(movie)
+        for movie in movies
+    ]
 
 
 @router.get("/", response_model=MovieListResponseSchema)
@@ -334,12 +504,9 @@ def update_movie(
         return {"detail": "Movie updated successfully."}
 
 
-
-#---------------
-
-@router.post("/favorite/")
-def add_favorite(
-        movie_data: FavoriteMoviesAddRequestSchema,
+@router.post("/movies/like/", status_code=status.HTTP_201_CREATED)
+def add_or_remove_like(
+        movie_data: MoviesRequestSchema,
         db: Session = Depends(get_db),
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
         token: str = Depends(get_token),
@@ -353,30 +520,117 @@ def add_favorite(
             detail=str(e)
         )
 
-    existing_movie = db.query(MovieModel).get(movie_data.id)
+    existing_like = db.query(MovieLikeModel).filter(MovieLikeModel.user_id == user_id, MovieLikeModel.movie_id == movie_data.id).first()
 
-    if not existing_movie:
+
+    if existing_like:
+        db.delete(existing_like)
+        db.commit()
+        return Response(
+            status_code=status.HTTP_204_NO_CONTENT
+        )
+
+    like = MovieLikeModel(user_id=user_id, movie_id=movie_data.id)
+
+    db.add(like)
+    db.commit()
+
+    existing_dislike = db.query(MovieDislikeModel).filter(MovieDislikeModel.user_id == user_id, MovieDislikeModel.movie_id == movie_data.id).first()
+    if existing_dislike:
+        db.delete(existing_dislike)
+        db.commit()
+
+    return {"detail": "like was created"}
+
+
+@router.post("/movies/dislike/", status_code=status.HTTP_201_CREATED)
+def add_or_remove_dislike(
+        movie_data: MoviesRequestSchema,
+        db: Session = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        token: str = Depends(get_token),
+):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    existing_dislike = db.query(MovieDislikeModel).filter(MovieDislikeModel.user_id == user_id, MovieDislikeModel.movie_id == movie_data.id).first()
+
+    if existing_dislike:
+        db.delete(existing_dislike)
+        db.commit()
+        return Response(
+            status_code=status.HTTP_204_NO_CONTENT
+        )
+
+    dislike = MovieDislikeModel(user_id=user_id, movie_id=movie_data.id)
+
+    db.add(dislike)
+    db.commit()
+
+    existing_like = db.query(MovieLikeModel).filter(MovieLikeModel.user_id == user_id, MovieLikeModel.movie_id == movie_data.id).first()
+    if existing_like:
+        db.delete(existing_like)
+        db.commit()
+
+    return {"detail": "dislike was created"}
+
+
+@router.post("/comments/")
+def add_comment(
+        movie_data: MovieCommentSchema,
+        db: Session = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        token: str = Depends(get_token),
+):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    movie = db.query(MovieModel).filter(MovieModel.id == movie_data.movie_id).first()
+
+    if not movie:
+        raise HTTPException(
+            status_code=404,
             detail="Movie with the given ID was not found."
         )
 
-    existing_favorite = db.query(FavoriteMovieModel).filter_by(user_id=user_id, movie_id=movie_data.id).first()
-    if existing_favorite:
+    comment = MovieCommentModel(user_id=user_id, movie_id=movie_data.movie_id, text=movie_data.comment)
+    db.add(comment)
+    db.commit()
+
+    return {"detail": f"Comment added with movie id: {movie_data.movie_id}"}
+
+
+@router.get("/{movie_id}/comments/")
+def get_comments(
+        movie_id: int,
+        db: Session = Depends(get_db)
+):
+    comments = db.query(MovieCommentModel).filter_by(movie_id=movie_id).all()
+
+    if not comments:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Movie already in favorites"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No comments found."
         )
 
-    favorite = FavoriteMovieModel(user_id=user_id, movie_id=movie_data.id)
-    db.add(favorite)
-    db.commit()
-    return {"detail": "Movie added to favorites"}
+    return comments
 
 
-@router.delete("/favorite/")
-def remove_favorite(
-        movie_data: FavoriteMoviesAddRequestSchema,
+@router.post("/answer/")
+def add_answer_comment(
+        answer_data: MovieAnswerCommentSchema,
         db: Session = Depends(get_db),
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
         token: str = Depends(get_token),
@@ -390,49 +644,14 @@ def remove_favorite(
             detail=str(e)
         )
 
-    existing_movie = db.query(MovieModel).get(movie_data.id)
+    answer = AnswerCommentsModel(
+        comment_id=answer_data.comment_id,
+        user_id=user_id,
+        text=answer_data.comment
+    )
 
-    if not existing_movie:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Movie with the given ID was not found."
-        )
-
-    favorite = db.query(FavoriteMovieModel).filter_by(user_id=user_id, movie_id=movie_data.id).first()
-    if not favorite:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Movie not in favorites"
-        )
-
-    db.delete(favorite)
+    db.add(answer)
     db.commit()
-    return {"detail": f"Movie with id: {movie_data.id} removed from favorites"}
+    db.refresh(answer)
 
-
-@router.get(
-    "/favorites/movies/",
-    # "/favorites/",
-    response_model=list[MovieListItemSchema]
-)
-def get_favorites(
-        db: Session = Depends(get_db),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-        token: str = Depends(get_token),
-):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
-    movies = db.query(MovieModel).join(FavoriteMovieModel).filter(FavoriteMovieModel.user_id == user_id).all()
-
-    return [
-        MovieListItemSchema.model_validate(movie)
-        for movie in movies
-    ]
-    # return {"one": "two"}
+    return answer

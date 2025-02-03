@@ -20,7 +20,7 @@ from sqlalchemy.orm import (
     relationship,
 )
 
-from app.movies.models import FavoriteMovieModel
+from app.movies.models import FavoriteMovieModel, MovieCommentModel
 from core.database import Base
 from core.utils import generate_secure_token, verify_password, hash_password
 from app.accounts.validators import validate_password_strength
@@ -126,6 +126,9 @@ class UserModel(Base):
     )
 
     favorites: Mapped[List["FavoriteMovieModel"]] = relationship("FavoriteMovieModel", back_populates="user",
+                                                                 cascade="all, delete-orphan")
+
+    comments: Mapped[List["MovieCommentModel"]] = relationship("MovieCommentModel", back_populates="user",
                                                                  cascade="all, delete-orphan")
 
     def __repr__(self):

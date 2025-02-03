@@ -184,6 +184,9 @@ class MovieModel(Base):
     favorites: Mapped[List["FavoriteMovieModel"]] = relationship("FavoriteMovieModel", back_populates="movie",
                                                                  cascade="all, delete-orphan")
 
+    comments: Mapped[List["MovieCommentModel"]] = relationship("MovieCommentModel", back_populates="movie",
+                                                                 cascade="all, delete-orphan")
+
     __table_args__ = (
         UniqueConstraint(
             "name", "year", "time", name="unique_movie_constraint"
@@ -198,8 +201,6 @@ class MovieModel(Base):
         return f"<Movie(name='{self.name}', release_date='{self.date}', score={self.score})>"
 
 
-#----------
-
 class FavoriteMovieModel(Base):
     __tablename__ = "favorite_movies"
 
@@ -211,3 +212,40 @@ class FavoriteMovieModel(Base):
     movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="favorites")
 
     __table_args__ = (UniqueConstraint("user_id", "movie_id", name="unique_favorite"),)
+
+
+class MovieLikeModel(Base):
+    __tablename__ = "movie_like"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int]
+    movie_id: Mapped[int]
+
+
+class MovieDislikeModel(Base):
+    __tablename__ = "movie_dislike"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int]
+    movie_id: Mapped[int]
+
+
+class MovieCommentModel(Base):
+    __tablename__ = "movie_comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
+    text: Mapped[str] = mapped_column(nullable=False)
+
+    user: Mapped["UserModel"] = relationship("UserModel", back_populates="comments")
+    movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="comments")
+
+
+class AnswerCommentsModel(Base):
+    __tablename__ = "answer_comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    comment_id: Mapped[int] = mapped_column(ForeignKey("movie_comments.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    text: Mapped[str] = mapped_column(nullable=False)
