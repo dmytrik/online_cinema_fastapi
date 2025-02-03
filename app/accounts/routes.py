@@ -6,7 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from core.dependencies import (
-    get_jwt_auth_manager,
+    get_jwt_auth_manager, get_current_user_id,
 )
 from app.accounts.models import (
     UserModel,
@@ -35,6 +35,7 @@ from app.accounts.schemas import (
     TokenRefreshRequestSchema,
     TokenRefreshResponseSchema,
 )
+
 from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
@@ -70,8 +71,8 @@ router = APIRouter()
     },
 )
 def register_user(
-    user_data: UserRegistrationRequestSchema,
-    db: Session = Depends(get_db),
+        user_data: UserRegistrationRequestSchema,
+        db: Session = Depends(get_db),
 ) -> UserRegistrationResponseSchema:
     """
     Endpoint for user registration.
@@ -141,7 +142,7 @@ def register_user(
     responses={
         400: {
             "description": "Bad Request - The activation token is invalid or expired, "
-            "or the user account is already active.",
+                           "or the user account is already active.",
             "content": {
                 "application/json": {
                     "examples": {
@@ -164,8 +165,8 @@ def register_user(
     },
 )
 def activate_account(
-    activation_data: UserActivationRequestSchema,
-    db: Session = Depends(get_db),
+        activation_data: UserActivationRequestSchema,
+        db: Session = Depends(get_db),
 ) -> MessageResponseSchema:
     """
     Endpoint to activate a user's account.
@@ -184,7 +185,7 @@ def activate_account(
     )
 
     if not token_record or cast(datetime, token_record.expires_at).replace(
-        tzinfo=timezone.utc
+            tzinfo=timezone.utc
     ) < datetime.now(timezone.utc):
         if token_record:
             db.delete(token_record)
@@ -215,14 +216,14 @@ def activate_account(
     response_model=MessageResponseSchema,
     summary="Request Password Reset Token",
     description=(
-        "Allows a user to request a password reset token. If the user exists and is active, "
-        "a new token will be generated and any existing tokens will be invalidated."
+            "Allows a user to request a password reset token. If the user exists and is active, "
+            "a new token will be generated and any existing tokens will be invalidated."
     ),
     status_code=status.HTTP_200_OK,
 )
 def request_password_reset_token(
-    data: PasswordResetRequestSchema,
-    db: Session = Depends(get_db),
+        data: PasswordResetRequestSchema,
+        db: Session = Depends(get_db),
 ) -> MessageResponseSchema:
     """
     Endpoint to request a password reset token.
@@ -263,7 +264,7 @@ def request_password_reset_token(
     responses={
         400: {
             "description": "Bad Request - The provided email or token is invalid, "
-            "the token has expired, or the user account is not active.",
+                           "the token has expired, or the user account is not active.",
             "content": {
                 "application/json": {
                     "examples": {
@@ -292,8 +293,8 @@ def request_password_reset_token(
     },
 )
 def reset_password(
-    data: PasswordResetCompleteRequestSchema,
-    db: Session = Depends(get_db),
+        data: PasswordResetCompleteRequestSchema,
+        db: Session = Depends(get_db),
 ) -> MessageResponseSchema:
     """
     Endpoint for resetting a user's password.
@@ -317,9 +318,9 @@ def reset_password(
     )
 
     if (
-        not token_record
-        or token_record.token != data.token
-        or expires_at < datetime.now(timezone.utc)
+            not token_record
+            or token_record.token != data.token
+            or expires_at < datetime.now(timezone.utc)
     ):
         if token_record:
             db.delete(token_record)
@@ -379,9 +380,9 @@ def reset_password(
     },
 )
 def login_user(
-    login_data: UserLoginRequestSchema,
-    db: Session = Depends(get_db),
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        login_data: UserLoginRequestSchema,
+        db: Session = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
 ) -> UserLoginResponseSchema:
     """
     Endpoint for user login.
@@ -432,6 +433,54 @@ def login_user(
 
 
 @router.post(
+    "/logout/",
+    summary="User Logout",
+    description="Revoke the refresh token and log the user out.",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        400: {
+            "description": "Bad Request - The provided refresh token is invalid or expired.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Invalid refresh token."}
+                }
+            },
+        },
+        401: {
+            "description": "Unauthorized - Refresh token not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Refresh token not found."}
+                }
+            },
+        },
+    },
+)
+def logout_user(
+        db: Session = Depends(get_db),
+        current_user_id: int = Depends(get_current_user_id),
+):
+    """
+    Logout endpoint that revokes the refresh token.
+    """
+    user = db.query(UserModel).filter_by(id=current_user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    refresh_token_record = db.query(RefreshTokenModel).filter_by(user_id=user.id).first()
+    if not refresh_token_record:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token not found.",
+        )
+
+    db.delete(refresh_token_record)
+    db.commit()
+
+
+@router.post(
     "/refresh/",
     response_model=TokenRefreshResponseSchema,
     summary="Refresh Access Token",
@@ -463,9 +512,9 @@ def login_user(
     },
 )
 def refresh_access_token(
-    token_data: TokenRefreshRequestSchema,
-    db: Session = Depends(get_db),
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        token_data: TokenRefreshRequestSchema,
+        db: Session = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
 ) -> TokenRefreshResponseSchema:
     """
     Endpoint to refresh an access token.
@@ -505,3 +554,137 @@ def refresh_access_token(
     new_access_token = jwt_manager.create_access_token({"user_id": user_id})
 
     return TokenRefreshResponseSchema(access_token=new_access_token)
+
+
+@router.post(
+    "/resend_activation_token/",
+    summary="Resend Activation Token",
+    description="Resend the activation token if the previous one expired.",
+    status_code=status.HTTP_200_OK,
+    responses={
+        404: {
+            "description": "User Not Found - The user does not exist.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "User not found."}
+                }
+            },
+        },
+        400: {
+            "description": "Bad Request - Invalid or expired activation token.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Activation token expired or invalid."}
+                }
+            },
+        },
+    },
+)
+def resend_activation_token(
+        user_data: UserRegistrationRequestSchema,
+        db: Session = Depends(get_db),
+):
+    """
+    Endpoint to resend the activation token if the previous one expired.
+    """
+    db_user = db.query(UserModel).filter(UserModel.email == user_data.email).first()
+
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    activation_token = db.query(ActivationTokenModel).filter_by(user_id=db_user.id).first()
+
+    if activation_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Activation token is still valid."
+        )
+    activation_token = ActivationTokenModel(
+        user_id=db_user.id,
+        user=db_user
+
+    )
+    db.add(activation_token)
+    db.flush()
+    db.refresh(activation_token)
+    db.commit()
+
+    return {"detail": "Activation token resent successfully."}
+
+
+@router.put("/users/{user_id}/group", status_code=status.HTTP_200_OK)
+def update_user_group(
+        user_id: int,
+        group_name: str,
+        db: Session = Depends(get_db),
+        current_user_id: int = Depends(get_current_user_id),
+):
+    """
+    Endpoint for changing the user group
+    (only available to administrators)
+    """
+
+    current_user = db.query(UserModel).filter_by(id=current_user_id).first()
+
+    if not current_user or current_user.group.name != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
+
+    new_group = db.query(UserGroupModel).filter_by(name=group_name).first()
+    if not new_group:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid group name"
+        )
+
+    user_to_update = db.query(UserModel).filter_by(id=user_id).first()
+    if not user_to_update:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    user_to_update.group = new_group
+    db.commit()
+    db.refresh(user_to_update)
+
+    return {"message": "User group updated successfully", "user_id": user_to_update.id,
+            "new_group": user_to_update.group.name}
+
+
+@router.put("/users/{user_id}/activate", status_code=status.HTTP_200_OK)
+def activate_user(
+        user_id: int,
+        db: Session = Depends(get_db),
+        current_user_id: int = Depends(get_current_user_id),
+):
+    """
+    Endpoint for activating cloud account registration
+    (only available for administrators)
+    """
+
+    current_user = db.query(UserModel).filter_by(id=current_user_id).first()
+    if not current_user or current_user.group.name != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
+
+    user_to_activate = db.query(UserModel).filter_by(id=user_id).first()
+    if not user_to_activate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    if user_to_activate.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="User is already active"
+        )
+
+    user_to_activate.is_active = True
+    db.commit()
+    db.refresh(user_to_activate)
+
+    return {"message": "User activated successfully", "user_id": user_to_activate.id,
+            "is_active": user_to_activate.is_active}
