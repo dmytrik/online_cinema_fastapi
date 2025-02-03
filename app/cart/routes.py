@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, BackgroundTasks
 from fastapi.params import Depends
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -18,6 +18,7 @@ from core.dependencies import get_jwt_auth_manager
 from exceptions import BaseSecurityError
 from security.http import get_token
 from security.interfaces import JWTAuthManagerInterface
+from app.accounts.email_service import send_email
 
 router = APIRouter()
 
@@ -83,6 +84,7 @@ def create_or_update_cart(
 @router.delete("/", response_model=CartResponseSchema)
 def remove_movie_from_cart(
         movie_data: CartRequestSchema,
+        background_tasks: BackgroundTasks,
         db: Session = Depends(get_db),
         token: str = Depends(get_token),
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
@@ -112,6 +114,14 @@ def remove_movie_from_cart(
     try:
         db.delete(cart_item)
         db.commit()
+        moderators = db.query(UserModel).filter_by(group_id=2).all()
+        for moderator in moderators:
+            background_tasks.add_task(
+                send_email,
+                moderator.email,
+                f"{movie.name} was deleted from cart with id: {cart.id}",
+                "Deleted movie from cart",
+            )
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(
@@ -150,7 +160,7 @@ def remove_cart(
 
 
 @router.get("/", response_model=CartDetailResponseSchema | list[AdminInfoSchema])
-def get_cart_by_id(
+def get_cart(
         db: Session = Depends(get_db),
         token: str = Depends(get_token),
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
@@ -185,10 +195,10 @@ def get_cart_by_id(
         ]
         return carts_data
 
-    cart = db.query(CartModel).filter_by(id=user.cart.id).first()
-
-    if not cart:
+    if not user.cart:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cart not found")
+
+    cart = db.query(CartModel).filter_by(id=user.cart.id).first()
 
     if cart.user_id != user_id:
         raise HTTPException(

@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import cast
 
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, BackgroundTasks
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -68,6 +68,7 @@ router = APIRouter()
 )
 def register_user(
         user_data: UserRegistrationRequestSchema,
+        background_tasks: BackgroundTasks,
         db: Session = Depends(get_db),
 ) -> UserRegistrationResponseSchema:
     """
@@ -126,8 +127,12 @@ def register_user(
 
         subject = "Activate Your Account"
 
-        send_email(new_user.email, body, subject)
-
+        background_tasks.add_task(
+            send_email,
+            new_user.email,
+            body,
+            subject,
+        )
         return new_user
     except SQLAlchemyError as err:
         db.rollback()
@@ -223,6 +228,7 @@ def activate_account(
 )
 def request_password_reset_token(
         data: PasswordResetRequestSchema,
+        background_tasks: BackgroundTasks,
         db: Session = Depends(get_db),
 ) -> MessageResponseSchema:
     """
@@ -249,7 +255,12 @@ def request_password_reset_token(
         body = (f"Please click the link to reset your password: "
                 f"{settings.PASSWORD_RESET_URL}. Enter your token {reset_token.token} in form")
         subject = "Password Reset Request"
-        send_email(user.email, body, subject)
+        background_tasks.add_task(
+            send_email,
+            user.email,
+            body,
+            subject,
+        )
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 

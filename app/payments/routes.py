@@ -1,7 +1,7 @@
 from datetime import date
 
 import stripe
-from fastapi import APIRouter, status, Depends, HTTPException
+from fastapi import APIRouter, status, Depends, HTTPException, BackgroundTasks
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -17,6 +17,8 @@ from core.config import settings
 from exceptions import BaseSecurityError
 from security.http import get_token
 from security.interfaces import JWTAuthManagerInterface
+from app.accounts.email_service import send_email
+
 
 router = APIRouter()
 
@@ -74,6 +76,7 @@ def get_payments(
 @router.get("/success/", response_model=PaymentSuccessSchema, status_code=status.HTTP_200_OK)
 def payment_success(
         payment_id: int,
+        background_tasks: BackgroundTasks,
         db: Session = Depends(get_db),
 ):
     try:
@@ -98,6 +101,12 @@ def payment_success(
         db.add_all(purchases)
         db.delete(user.cart)
         db.commit()
+        background_tasks.add_task(
+            send_email,
+            user.email,
+            f"Your payment was success on {payment.amount}",
+            "Thanks for buying movies!",
+        )
         return {
             "message": "Payment successful",
             "amount_paid": session.amount_total / 100,
