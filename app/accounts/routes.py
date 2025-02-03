@@ -1,12 +1,12 @@
 from datetime import datetime, timezone
 from typing import cast
 
-from fastapi import APIRouter, Depends, status, HTTPException, Request
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from core.dependencies import (
-    get_jwt_auth_manager,
+    get_jwt_auth_manager, get_current_user_id,
 )
 from app.accounts.models import (
     UserModel,
@@ -31,7 +31,7 @@ from app.accounts.schemas import (
     TokenRefreshRequestSchema,
     TokenRefreshResponseSchema,
 )
-from security.http import get_token
+
 from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
@@ -445,27 +445,19 @@ def login_user(
     },
 )
 def logout_user(
-        token_data: TokenRefreshRequestSchema,
         db: Session = Depends(get_db),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        current_user_id: int = Depends(get_current_user_id),
 ):
     """
     Logout endpoint that revokes the refresh token.
     """
-    try:
-        decoded_token = jwt_manager.decode_refresh_token(token_data.refresh_token)
-        decoded_token.get("user_id")
-    except BaseSecurityError as error:
+    user = db.query(UserModel).filter_by(id=current_user_id).first()
+    if not user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(error),
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
-    refresh_token_record = (
-        db.query(RefreshTokenModel)
-        .filter_by(token=token_data.refresh_token)
-        .first()
-    )
+    refresh_token_record = db.query(RefreshTokenModel).filter_by(user_id=user.id).first()
     if not refresh_token_record:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -616,19 +608,12 @@ def update_user_group(
         user_id: int,
         group_name: str,
         db: Session = Depends(get_db),
-        token: str = Depends(get_token),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        current_user_id: int = Depends(get_current_user_id),
 ):
     """
     Endpoint for changing the user group
     (only available to administrators)
     """
-
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        current_user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
 
     current_user = db.query(UserModel).filter_by(id=current_user_id).first()
 
@@ -661,22 +646,12 @@ def update_user_group(
 def activate_user(
         user_id: int,
         db: Session = Depends(get_db),
-        token: str = Depends(get_token),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        current_user_id: int = Depends(get_current_user_id),
 ):
     """
-    End point for activating cloud account registration
+    Endpoint for activating cloud account registration
     (only available for administrators)
     """
-
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        current_user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e)
-        )
-
 
     current_user = db.query(UserModel).filter_by(id=current_user_id).first()
     if not current_user or current_user.group.name != "admin":
