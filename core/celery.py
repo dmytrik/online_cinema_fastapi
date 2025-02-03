@@ -5,8 +5,8 @@ from app.accounts.tasks import check_expired_activation_tokens
 
 app = Celery(
     "core",
-    broker=settings.CELERY_BROKER_URL,
-    backend=settings.CELERY_RESULT_BACKEND,
+    broker=settings.CELERY_BROKER,
+    backend=settings.CELERY_BACKEND,
 )
 
 app.conf.update(

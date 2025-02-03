@@ -8,17 +8,20 @@ services:
       - .env
     ports:
       - "5432:5432"
+    volumes:
+      - my_db:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $POSTGRES_USER" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   redis:
-    image: redis:latest
+    image: redis:7
     restart: always
     ports:
       - "6379:6379"
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
   app:
     build: .
@@ -33,13 +36,13 @@ services:
     ports:
       - "8000:8000"
     healthcheck:
-      test: [ "CMD", "curl", "--fail", "http://localhost:8000/docs" ]
+      test: [ "CMD", "curl", "--fail", "http://localhost:8000/health" ]
       interval: 10s
-      retries: 5
-      start_period: 10s
-      timeout: 5s
+      retries: 10
+      start_period: 50s
+      timeout: 10s
     command: >
-      sh -c "sleep 5 && alembic revision --autogenerate -m "init" && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+      sh -c "sleep 10 && alembic revision --autogenerate && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
   celery_worker:
     build: .
@@ -49,16 +52,12 @@ services:
       - celery_data:/app/celerybeat
     env_file:
       - .env
+    environment:
+      - ENVIRONMENT=docker
     depends_on:
-      app:
-        condition: service_healthy
+      - redis
+      - app
     restart: always
-    healthcheck:
-      test: [ "CMD-SHELL", "celery -A core inspect ping -d celery@$(hostname)" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   celery_beat:
     build: .
@@ -68,16 +67,13 @@ services:
       - celery_data:/app/celerybeat
     env_file:
       - .env
+    environment:
+      - ENVIRONMENT=docker
     depends_on:
-      app:
-        condition: service_healthy
+      - redis
+      - app
     restart: always
-    healthcheck:
-      test: [ "CMD-SHELL", "celery -A core inspect ping -d celery@$(hostname)" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
 volumes:
   celery_data:
+  my_db:

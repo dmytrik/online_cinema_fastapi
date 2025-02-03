@@ -24,8 +24,6 @@ class BaseAppSettings(BaseSettings):
 
 class Settings(BaseAppSettings):
     # Celery settings
-    CELERY_BROKER_URL: str
-    CELERY_RESULT_BACKEND: str
     CELERY_TIMEZONE: str = "UTC"
     CELERY_TASK_TRACK_STARTED: bool = True
     CELERY_TASK_TIME_LIMIT: int = 60
@@ -53,5 +51,16 @@ class Settings(BaseAppSettings):
         return (f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"
                 f"{self.POSTGRES_HOST}:{self.POSTGRES_DB_PORT}/{self.POSTGRES_DB}")
 
+    @property
+    def CELERY_BACKEND(self) -> str:
+        if self.ENVIRONMENT == "local":
+            return "redis://localhost:6379/0"
+        return "redis://redis:6379/0"
+
+    @property
+    def CELERY_BROKER(self) -> str:
+        if self.ENVIRONMENT == "local":
+            return "redis://localhost:6379/0"
+        return "redis://redis:6379/0"
 
 settings = Settings()
