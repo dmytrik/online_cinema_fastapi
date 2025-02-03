@@ -17,6 +17,7 @@ from app.movies.models import (
     StarModel,
     CertificationModel,
     DirectorModel,
+    FavoriteMovieModel,
 )
 from app.movies.schemas import (
     MovieListItemSchema,
@@ -24,6 +25,7 @@ from app.movies.schemas import (
     MovieCreateSchema,
     MovieDetailSchema,
     MovieUpdateSchema,
+    FavoriteMoviesAddRequestSchema,
 )
 
 from core.database import get_db
@@ -330,3 +332,107 @@ def update_movie(
         raise HTTPException(status_code=400, detail="Invalid input data.")
     else:
         return {"detail": "Movie updated successfully."}
+
+
+
+#---------------
+
+@router.post("/favorite/")
+def add_favorite(
+        movie_data: FavoriteMoviesAddRequestSchema,
+        db: Session = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        token: str = Depends(get_token),
+):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    existing_movie = db.query(MovieModel).get(movie_data.id)
+
+    if not existing_movie:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Movie with the given ID was not found."
+        )
+
+    existing_favorite = db.query(FavoriteMovieModel).filter_by(user_id=user_id, movie_id=movie_data.id).first()
+    if existing_favorite:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Movie already in favorites"
+        )
+
+    favorite = FavoriteMovieModel(user_id=user_id, movie_id=movie_data.id)
+    db.add(favorite)
+    db.commit()
+    return {"detail": "Movie added to favorites"}
+
+
+@router.delete("/favorite/")
+def remove_favorite(
+        movie_data: FavoriteMoviesAddRequestSchema,
+        db: Session = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        token: str = Depends(get_token),
+):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    existing_movie = db.query(MovieModel).get(movie_data.id)
+
+    if not existing_movie:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Movie with the given ID was not found."
+        )
+
+    favorite = db.query(FavoriteMovieModel).filter_by(user_id=user_id, movie_id=movie_data.id).first()
+    if not favorite:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Movie not in favorites"
+        )
+
+    db.delete(favorite)
+    db.commit()
+    return {"detail": f"Movie with id: {movie_data.id} removed from favorites"}
+
+
+@router.get(
+    "/favorites/movies/",
+    # "/favorites/",
+    response_model=list[MovieListItemSchema]
+)
+def get_favorites(
+        db: Session = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        token: str = Depends(get_token),
+):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    movies = db.query(MovieModel).join(FavoriteMovieModel).filter(FavoriteMovieModel.user_id == user_id).all()
+
+    return [
+        MovieListItemSchema.model_validate(movie)
+        for movie in movies
+    ]
+    # return {"one": "two"}

@@ -133,3 +133,7 @@ class MovieUpdateSchema(BaseModel):
     model_config = {
         "from_attributes": True,
     }
+
+
+class FavoriteMoviesAddRequestSchema(BaseModel):
+    id: int

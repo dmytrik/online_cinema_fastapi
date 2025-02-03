@@ -1,5 +1,6 @@
 from enum import Enum
 import uuid
+from typing import List
 
 from sqlalchemy import (
     String,
@@ -12,6 +13,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy.dialects.postgresql import UUID
 
+# from app.accounts.models import UserModel
 from core.database import Base
 from core.config import settings
 
@@ -179,6 +181,9 @@ class MovieModel(Base):
         "CartItemModel", back_populates="movie"
     )
 
+    favorites: Mapped[List["FavoriteMovieModel"]] = relationship("FavoriteMovieModel", back_populates="movie",
+                                                                 cascade="all, delete-orphan")
+
     __table_args__ = (
         UniqueConstraint(
             "name", "year", "time", name="unique_movie_constraint"
@@ -191,3 +196,18 @@ class MovieModel(Base):
 
     def __repr__(self):
         return f"<Movie(name='{self.name}', release_date='{self.date}', score={self.score})>"
+
+
+#----------
+
+class FavoriteMovieModel(Base):
+    __tablename__ = "favorite_movies"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
+
+    user: Mapped["UserModel"] = relationship("UserModel", back_populates="favorites")
+    movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="favorites")
+
+    __table_args__ = (UniqueConstraint("user_id", "movie_id", name="unique_favorite"),)
