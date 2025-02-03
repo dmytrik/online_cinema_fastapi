@@ -239,7 +239,7 @@ def get_movie_list(
     if sort_by not in ["id", "year", "imdb", "name", "price"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid sort_by field. Allowed values are id, year, imdb, name, price."
+            detail="Invalid sort_by field. Allowed values are id, year, imdb, name, price."
         )
 
     sort_direction = asc if sort_order == "asc" else desc
