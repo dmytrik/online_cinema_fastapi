@@ -32,3 +32,7 @@ jobs:
 
       - name: make
         run: poetry run ruff check --output-format=github .
+
+      - name: Run tests
+        timeout-minutes: 5
+        run: pytest app/accounts/test_accounts.py .
