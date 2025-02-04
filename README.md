@@ -6,8 +6,7 @@ Welcome to **Online Cinema** – your ultimate destination for movies and video 
 Dive into a world of entertainment where you can **explore, watch, and purchase** your favorite films anytime, anywhere. 
 With a **vast library**, a **personalized experience**, and an **intuitive interface**, your perfect movie night is just a click away.  
 _____
-## CHECK IT OUT
-_Deploy link will be soon_
+## [CHECK IT OUT](http://3.78.200.9:8000/docs)
 _____
 ### 🛠 INSTALLATION 🛠
 
@@ -33,9 +32,13 @@ _____
 4. **Activate the virtual environment:**
     ```bash
    poetry shell
-5. **Set up the database:**
-    ```bash
+5. **Сreate a migration based on model changes:**
+   ```bash 
+   alembic revision --autogenerate
+6. **Apply all migrations to bring the database up to date:**
+   ```bash 
    alembic upgrade head
+
 6. **Start the development server:**
     ```bash
    uvicorn app.main:app --reload
