@@ -34,5 +34,7 @@ jobs:
         run: poetry run ruff check --output-format=github .
 
       - name: Run tests
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
         timeout-minutes: 5
-        run: pytest app/accounts/test_accounts.py .
+        run: pytest .
