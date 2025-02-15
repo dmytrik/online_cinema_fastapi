@@ -619,7 +619,6 @@ def resend_activation_token(
     activation_token = ActivationTokenModel(
         user_id=db_user.id,
         user=db_user
-
     )
     db.add(activation_token)
     db.flush()

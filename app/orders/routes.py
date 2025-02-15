@@ -12,10 +12,7 @@ from app.orders.models import OrderModel, OrderItemModel
 from app.orders.schemas import OrderCreateResponseSchema, OrderListResponseSchema
 from app.payments.models import PaymentModel
 from core.database import get_db
-from core.dependencies import get_jwt_auth_manager
-from exceptions import BaseSecurityError
-from security.http import get_token
-from security.interfaces import JWTAuthManagerInterface
+from core.dependencies import get_current_user_id
 from app.payments.services import create_stripe_session
 
 
@@ -28,18 +25,8 @@ def get_orders(
         order_date: date = None,
         order_status: str = None,
         db: Session = Depends(get_db),
-        token: str = Depends(get_token),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
     user = db.query(UserModel).filter_by(id=user_id).first()
 
     if not user:
@@ -72,18 +59,8 @@ def get_orders(
 @router.post("/", response_model=OrderCreateResponseSchema, status_code=status.HTTP_201_CREATED)
 def create_order(
         db: Session = Depends(get_db),
-        token: str = Depends(get_token),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
     user = db.query(UserModel).filter_by(id=user_id).first()
 
     if not user:
@@ -160,19 +137,8 @@ def create_order(
 def refund_order(
         order_id: int,
         db: Session = Depends(get_db),
-        token: str = Depends(get_token),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
-
     order = db.query(OrderModel).filter_by(id=order_id).first()
     payment = db.query(PaymentModel).filter_by(order_id=order_id).first()
     if order.user_id != user_id or payment.status == "refunded":

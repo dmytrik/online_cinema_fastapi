@@ -32,10 +32,7 @@ from app.movies.schemas import (
 
 from core.database import get_db
 from sqlalchemy.orm import Session, joinedload
-from core.dependencies import get_jwt_auth_manager
-from security.interfaces import JWTAuthManagerInterface
-from exceptions import BaseSecurityError
-from security.http import get_token
+from core.dependencies import get_current_user_id
 from app.accounts.email_service import send_email
 
 
@@ -45,18 +42,8 @@ router = APIRouter()
 def remove_comments(
         comment_data: MovieCommentDeleteSchema,
         db: Session = Depends(get_db),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-        token: str = Depends(get_token),
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
     comments = db.query(MovieCommentModel).filter_by(user_id=user_id).all()
 
     comments_ids = [comment.id for comment in comments]
@@ -80,18 +67,8 @@ def remove_comments(
 def remove_answer(
         comment_data: MovieCommentDeleteSchema,
         db: Session = Depends(get_db),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-        token: str = Depends(get_token),
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
     comments = db.query(AnswerCommentsModel).filter_by(user_id=user_id).all()
 
     comments_ids = [comment.id for comment in comments]
@@ -115,18 +92,8 @@ def remove_answer(
 def add_favorite(
         movie_data: MoviesRequestSchema,
         db: Session = Depends(get_db),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-        token: str = Depends(get_token),
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
     existing_movie = db.query(MovieModel).get(movie_data.id)
 
     if not existing_movie:
@@ -152,18 +119,8 @@ def add_favorite(
 def remove_favorite(
         movie_data: MoviesRequestSchema,
         db: Session = Depends(get_db),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-        token: str = Depends(get_token),
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
     existing_movie = db.query(MovieModel).get(movie_data.id)
 
     if not existing_movie:
@@ -190,18 +147,8 @@ def remove_favorite(
 )
 def get_favorites(
         db: Session = Depends(get_db),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-        token: str = Depends(get_token),
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
     movies = db.query(MovieModel).join(FavoriteMovieModel).filter(FavoriteMovieModel.user_id == user_id).all()
 
     return [
@@ -277,18 +224,8 @@ def get_movie_list(
 def create_movie(
         movie_data: MovieCreateSchema,
         db: Session = Depends(get_db),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-        token: str = Depends(get_token),
+        user_id: int = Depends(get_current_user_id),
 ) -> MovieDetailSchema:
-
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
 
     user_group_name =  (
         db.query(UserGroupModel.name)
@@ -405,19 +342,8 @@ def get_movie_by_id(
 def delete_movie(
         movie_id: int,
         db: Session = Depends(get_db),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-        token: str = Depends(get_token),
+        user_id: int = Depends(get_current_user_id),
 ):
-
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
     user_group_name =  (
         db.query(UserGroupModel.name)
         .join(UserModel, UserModel.group_id == UserGroupModel.id)
@@ -458,18 +384,8 @@ def update_movie(
         movie_id: int,
         movie_data: MovieUpdateSchema,
         db: Session = Depends(get_db),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-        token: str = Depends(get_token),
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
     user_group_name =  (
         db.query(UserGroupModel.name)
         .join(UserModel, UserModel.group_id == UserGroupModel.id)
@@ -508,19 +424,11 @@ def update_movie(
 def add_or_remove_like(
         movie_data: MoviesRequestSchema,
         db: Session = Depends(get_db),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-        token: str = Depends(get_token),
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
-    existing_like = db.query(MovieLikeModel).filter(MovieLikeModel.user_id == user_id, MovieLikeModel.movie_id == movie_data.id).first()
+    existing_like = db.query(MovieLikeModel).filter(
+        MovieLikeModel.user_id == user_id, MovieLikeModel.movie_id == movie_data.id
+    ).first()
 
 
     if existing_like:
@@ -535,7 +443,10 @@ def add_or_remove_like(
     db.add(like)
     db.commit()
 
-    existing_dislike = db.query(MovieDislikeModel).filter(MovieDislikeModel.user_id == user_id, MovieDislikeModel.movie_id == movie_data.id).first()
+    existing_dislike = db.query(MovieDislikeModel).filter(
+        MovieDislikeModel.user_id == user_id,
+        MovieDislikeModel.movie_id == movie_data.id
+    ).first()
     if existing_dislike:
         db.delete(existing_dislike)
         db.commit()
@@ -547,19 +458,11 @@ def add_or_remove_like(
 def add_or_remove_dislike(
         movie_data: MoviesRequestSchema,
         db: Session = Depends(get_db),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-        token: str = Depends(get_token),
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
-    existing_dislike = db.query(MovieDislikeModel).filter(MovieDislikeModel.user_id == user_id, MovieDislikeModel.movie_id == movie_data.id).first()
+    existing_dislike = db.query(MovieDislikeModel).filter(
+        MovieDislikeModel.user_id == user_id, MovieDislikeModel.movie_id == movie_data.id
+    ).first()
 
     if existing_dislike:
         db.delete(existing_dislike)
@@ -573,7 +476,10 @@ def add_or_remove_dislike(
     db.add(dislike)
     db.commit()
 
-    existing_like = db.query(MovieLikeModel).filter(MovieLikeModel.user_id == user_id, MovieLikeModel.movie_id == movie_data.id).first()
+    existing_like = db.query(MovieLikeModel).filter(
+        MovieLikeModel.user_id == user_id,
+        MovieLikeModel.movie_id == movie_data.id
+    ).first()
     if existing_like:
         db.delete(existing_like)
         db.commit()
@@ -585,18 +491,8 @@ def add_or_remove_dislike(
 def add_comment(
         movie_data: MovieCommentSchema,
         db: Session = Depends(get_db),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-        token: str = Depends(get_token),
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
     movie = db.query(MovieModel).filter(MovieModel.id == movie_data.movie_id).first()
 
     if not movie:
@@ -633,18 +529,8 @@ def add_answer_comment(
         answer_data: MovieAnswerCommentSchema,
         background_tasks: BackgroundTasks,
         db: Session = Depends(get_db),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-        token: str = Depends(get_token),
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
     answer = AnswerCommentsModel(
         comment_id=answer_data.comment_id,
         user_id=user_id,

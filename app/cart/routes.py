@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, BackgroundTasks
 from fastapi.params import Depends
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.accounts.models import UserModel
 from app.cart.models import CartModel, CartItemModel, Purchases
@@ -14,11 +14,9 @@ from app.cart.schemas import (
 )
 from app.movies.models import MovieModel
 from core.database import get_db
-from core.dependencies import get_jwt_auth_manager
-from exceptions import BaseSecurityError
-from security.http import get_token
-from security.interfaces import JWTAuthManagerInterface
+from core.dependencies import get_current_user_id
 from app.accounts.email_service import send_email
+
 
 router = APIRouter()
 
@@ -27,24 +25,24 @@ router = APIRouter()
 def create_or_update_cart(
         cart_data: CartRequestSchema,
         db: Session = Depends(get_db),
-        token: str = Depends(get_token),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+        user_id: int = Depends(get_current_user_id)
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
     purchase = db.query(Purchases).filter_by(user_id=user_id, movie_id=cart_data.movie_id).first()
 
     if purchase:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You have already bought this movie(")
 
-    movie = db.query(MovieModel).filter_by(id=cart_data.movie_id).first()
+    movie = (
+        db.query(MovieModel)
+        .options(
+            joinedload(MovieModel.certification),
+            selectinload(MovieModel.genres),
+            selectinload(MovieModel.stars),
+            selectinload(MovieModel.directors)
+        )
+        .filter_by(id=cart_data.movie_id)
+        .first()
+    )
     if not movie:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid input data.")
 
@@ -86,18 +84,8 @@ def remove_movie_from_cart(
         movie_data: CartRequestSchema,
         background_tasks: BackgroundTasks,
         db: Session = Depends(get_db),
-        token: str = Depends(get_token),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
     movie = db.query(MovieModel).filter_by(id=movie_data.movie_id).first()
     if not movie:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid input data.")
@@ -137,17 +125,8 @@ def remove_movie_from_cart(
 @router.delete("/cart/", status_code=status.HTTP_204_NO_CONTENT)
 def remove_cart(
         db: Session = Depends(get_db),
-        token: str = Depends(get_token),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
     cart = db.query(CartModel).filter_by(user_id=user_id).first()
 
     if not cart:
@@ -162,17 +141,8 @@ def remove_cart(
 @router.get("/", response_model=CartDetailResponseSchema | list[AdminInfoSchema])
 def get_cart(
         db: Session = Depends(get_db),
-        token: str = Depends(get_token),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
     user = db.query(UserModel).filter_by(id=user_id).first()
     if not user:
         raise HTTPException(
