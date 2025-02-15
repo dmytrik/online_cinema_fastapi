@@ -79,7 +79,7 @@ def create_or_update_cart(
         )
 
 
-@router.delete("/", response_model=CartResponseSchema)
+@router.post("/movie-delete/", response_model=CartResponseSchema)
 def remove_movie_from_cart(
         movie_data: CartRequestSchema,
         background_tasks: BackgroundTasks,
