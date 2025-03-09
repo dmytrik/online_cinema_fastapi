@@ -2,6 +2,13 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.local
+online_cinema.db
+### macOS ###
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
 
 # C extensions
 *.so
@@ -54,6 +61,8 @@ cover/
 # Translations
 *.mo
 *.pot
+
+.idea
 
 # Django stuff:
 *.log
