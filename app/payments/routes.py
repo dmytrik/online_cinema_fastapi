@@ -12,11 +12,8 @@ from app.orders.models import OrderModel
 from app.payments.models import PaymentModel
 from app.payments.schemas import PaymentResponseSchema, PaymentSuccessSchema, PaymentCancelSchema
 from core.database import get_db
-from core.dependencies import get_jwt_auth_manager
+from core.dependencies import get_current_user_id
 from core.config import settings
-from exceptions import BaseSecurityError
-from security.http import get_token
-from security.interfaces import JWTAuthManagerInterface
 from app.accounts.email_service import send_email
 
 
@@ -32,18 +29,8 @@ def get_payments(
         payment_date: date = None,
         payment_status: str = None,
         db: Session = Depends(get_db),
-        token: str = Depends(get_token),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+        user_id: int = Depends(get_current_user_id),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-
     user = db.query(UserModel).filter_by(id=user_id).first()
 
     if not user:

@@ -61,7 +61,7 @@ def reset_db(request):
     reset_sqlite_database()
 
 @pytest.fixture(scope="function")
-def seed_user_groups(db_session):
+def db(db_session):
     groups = [{"name": group.value} for group in UserGroupEnum]
     db_session.execute(insert(UserGroupModel).values(groups))
     db_session.commit()

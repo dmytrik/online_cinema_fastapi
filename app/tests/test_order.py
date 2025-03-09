@@ -18,7 +18,7 @@ def create_admin_user(db_session):
         db_session.commit()
     user = UserModel(
         email="admin@example.com",
-        _hashed_password="FAfg231!@",
+        password="FAfg231!@",
         group_id=3,
         group=admin_group
     )
@@ -43,7 +43,7 @@ def create_user(
         db_session.commit()
     user = UserModel(
         email=email,
-        _hashed_password=password,
+        password=password,
         group_id=1
     )
     db_session.add(user)
@@ -120,7 +120,7 @@ def test_get_orders_as_admin(client, db_session, jwt_manager):
     Test for retrieving orders filtered by date.
     """
     admin = create_admin_user(db_session)
-    create_user(db_session, email="NOadmin@mai.pp", password="r21FDAF")
+    create_user(db_session, email="NOadmin@mai.pp", password="r21FDAFe")
     movie = create_movie(
         db_session,
         name="Inception",
